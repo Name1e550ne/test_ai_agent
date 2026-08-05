@@ -73,7 +73,7 @@ std::string SleepTask::last_error() const {
 }
 
 void SleepTask::run_loop(std::stop_token token) {
-    auto& logger = demo_daemon::core::Logger::instance();
+    Logger& logger = Logger::instance();
     
     logger.info("SleepTask started for {} ms", duration_.count());
     

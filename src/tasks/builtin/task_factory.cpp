@@ -1,6 +1,7 @@
 #include "demo_daemon/tasks/task_factory.hpp"
 #include "demo_daemon/tasks/heartbeat_task.hpp"
 #include "demo_daemon/tasks/sleep_task.hpp"
+#include <nlohmann/json.hpp>
 
 namespace demo_daemon::tasks {
 
