@@ -4,7 +4,7 @@ add_library(demo_daemon_core STATIC)
 
 target_sources(demo_daemon_core PRIVATE
     logger.cpp
-    error_codes.cpp
+    signal_handler.cpp
 )
 
 target_include_directories(demo_daemon_core PUBLIC
