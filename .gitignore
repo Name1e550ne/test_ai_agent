@@ -1,58 +1,36 @@
 ```
-# Build directories
-build/
-cmake-build-*/
-
-# CMake files
-CMakeCache.txt
-CMakeFiles/
-CMakeScripts/
-*.cmake
-Makefile
-cmake_install.cmake
-CPackConfig.cmake
-CPackSourceConfig.cmake
-
-# Compiled objects and executables
+# Build artifacts
 *.o
 *.obj
 *.a
-*.lib
 *.so
 *.dylib
 *.dll
 *.exe
 *.out
 
-# Dependencies downloaded by CMake
-_deps/
+# CMake build directories
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+compile_commands.json
 
-# IDE specific files
+# Dependencies
+.externalNativeBuild/
+.gradle/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Log files
-*.log
-
-# Temporary files
-*.tmp
-*~
-
-# Coverage reports
-coverage/
-htmlcov/
-
-# Package manager caches
-.npm/
-.yarn/
-.pip-cache/
-
-# Environment files
-.env
-.env.local
-*.env.*
 
 # OS generated files
 .DS_Store

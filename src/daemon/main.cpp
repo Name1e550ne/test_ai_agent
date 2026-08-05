@@ -1,16 +1,29 @@
 #include "demo_daemon/core/signal_handler.hpp"
 #include "demo_daemon/core/logger.hpp"
 #include "demo_daemon/core/version.hpp"
+#include "demo_daemon/core/command_registry.hpp"
 #include "demo_daemon/ipc/unix_socket_server.hpp"
 #include "demo_daemon/tasks/task_manager.hpp"
 #include "demo_daemon/tasks/task_registry.hpp"
-#include "demo_daemon/core/command_registry.hpp"
+#include "demo_daemon/commands/ping_command.hpp"
+#include "demo_daemon/commands/status_command.hpp"
+#include "demo_daemon/commands/shutdown_command.hpp"
+#include "demo_daemon/commands/commands_list_command.hpp"
+#include "demo_daemon/commands/tasks_list_command.hpp"
+#include "demo_daemon/commands/tasks_add_command.hpp"
+#include "demo_daemon/commands/tasks_stop_command.hpp"
 #include <iostream>
 #include <csignal>
 #include <unistd.h>
 #include <cstdlib>
+#include <memory>
+#include <thread>
+#include <chrono>
 
 using namespace demo_daemon;
+using namespace demo_daemon::ipc;
+using namespace demo_daemon::tasks;
+using namespace demo_daemon::core;
 
 namespace {
 
@@ -78,9 +91,95 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Главный цикл обработки с поддержкой graceful shutdown
+    // Создаем реестр команд и регистрируем встроенные команды
+    auto commandRegistry = std::make_shared<CommandRegistry>();
+    
+    // Регистрируем встроенные команды
+    commandRegistry->register_command(std::make_shared<PingCommand>());
+    commandRegistry->register_command(std::make_shared<StatusCommand>());
+    commandRegistry->register_command(std::make_shared<ShutdownCommand>(signalHandler));
+    commandRegistry->register_command(std::make_shared<CommandsListCommand>(*commandRegistry));
+    
+    // Создаем реестр задач и менеджер задач
+    auto taskRegistry = std::make_shared<TaskRegistry>();
+    tasks::TaskRegistry::register_builtin_tasks(taskRegistry);
+    auto taskManager = std::make_shared<TaskManager>(taskRegistry);
+    
+    // Добавляем команды для управления задачами
+    commandRegistry->register_command(std::make_shared<TasksListCommand>(*taskManager));
+    commandRegistry->register_command(std::make_shared<TasksAddCommand>(*taskManager));
+    commandRegistry->register_command(std::make_shared<TasksStopCommand>(*taskManager));
+
+    // Настраиваем сервер
+    UnixSocketConfig config;
+    config.socket_path = socketPath;
+    auto logger = std::make_shared<Logger>();
+    auto server = std::make_unique<UnixSocketServer>(config, logger);
+    
+    if (!server->initialize()) {
+        LOG_ERROR("Failed to initialize Unix socket server");
+        return EXIT_FAILURE;
+    }
+
+    LOG_INFO("Unix socket server initialized at " + socketPath);
+    LOG_INFO("Daemon is ready to accept connections");
+
+    // Обработчик команд для сервера
+    auto commandHandler = [commandRegistry, taskManager](const RequestMessage& request) -> ResponseMessage {
+        try {
+            auto cmdOpt = commandRegistry->get_command(request.method);
+            if (!cmdOpt) {
+                nlohmann::json error_data = {
+                    {"code", -32601},
+                    {"message", "Method not found: " + request.method}
+                };
+                return ResponseMessage{
+                    .id = request.id,
+                    .result = error_data
+                };
+            }
+            
+            auto cmd = *cmdOpt;
+            core::CommandContext ctx{};
+            ctx.task_manager = taskManager;
+            auto result = cmd->execute(ctx, request.params);
+            
+            nlohmann::json response_data = result.data;
+            if (!result.success) {
+                nlohmann::json error_data = {
+                    {"code", result.error_code},
+                    {"message", result.message}
+                };
+                return ResponseMessage{
+                    .id = request.id,
+                    .result = error_data
+                };
+            }
+            
+            return ResponseMessage{
+                .id = request.id,
+                .result = std::move(response_data)
+            };
+        } catch (const std::exception& e) {
+            LOG_ERROR("Command execution error: " + std::string(e.what()));
+            nlohmann::json error_data = {
+                {"code", -32603},
+                {"message", "Internal error: " + std::string(e.what())}
+            };
+            return ResponseMessage{
+                .id = request.id,
+                .result = error_data
+            };
+        }
+    };
+
+    // Запускаем сервер в отдельном потоке
+    std::thread serverThread([&server, commandHandler]() {
+        server->run(commandHandler);
+    });
+
+    // Главный цикл обработки сигналов
     while (!SignalHandler::isShutdownRequested()) {
-        // Проверяем наличие сигналов
         SignalHandler::SignalType signal = signalHandler.checkSignal();
         
         if (signal != SignalHandler::SignalType::None) {
@@ -109,12 +208,26 @@ int main(int argc, char* argv[]) {
             break;  // Выход из цикла при SIGINT/SIGTERM
         }
 
-        // Небольшая пауза чтобы не нагружать CPU и проверять сигналы
+        // Небольшая пауза чтобы не нагружать CPU
         usleep(100000);  // 100ms
     }
 
     // Graceful shutdown
     LOG_INFO("Shutting down daemon...");
+    
+    // Останавливаем сервер
+    LOG_INFO("Stopping Unix socket server...");
+    server->stop();
+    
+    // Ждем завершения потока сервера
+    if (serverThread.joinable()) {
+        serverThread.join();
+    }
+    
+    // Останавливаем все задачи
+    LOG_INFO("Stopping all background tasks...");
+    taskManager->stop_all_tasks();
+    
     LOG_INFO("Daemon stopped gracefully");
     
     return EXIT_SUCCESS;
