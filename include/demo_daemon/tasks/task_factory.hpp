@@ -1,6 +1,7 @@
 #pragma once
 
-#include "tasks/itask.hpp"
+#include "demo_daemon/tasks/itask.hpp"
+#include <nlohmann/json.hpp>
 #include <memory>
 #include <string>
 #include <unordered_map>
