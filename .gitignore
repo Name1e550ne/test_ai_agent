@@ -1,28 +1,29 @@
 ```
-# Build artifacts
-build/
-dist/
+# Compiled and build artifacts
 *.o
 *.obj
-*.a
-*.lib
-*.so
-*.dll
-*.exe
+*.out
+build/
+dist/
 
 # Dependencies
 venv/
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment
 .env
 .env.local
 *.env.*
-
-# CMake
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-*_autogen/
 
 # Editors
 .vscode/
@@ -30,14 +31,36 @@ Makefile
 *.swp
 *.swo
 
-# Logs
-*.log
-
-# Coverage
-.coverage
+# Coverage reports
 coverage/
 htmlcov/
+.coverage
 
-# Temp files
-*.tmp
+# System files
+.DS_Store
+Thumbs.db
+
+# Compression files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

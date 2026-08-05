@@ -1,6 +1,6 @@
-#include "tasks/task_factory.hpp"
-#include "tasks/builtin/heartbeat_task.hpp"
-#include "tasks/builtin/sleep_task.hpp"
+#include "demo_daemon/tasks/task_factory.hpp"
+#include "demo_daemon/tasks/heartbeat_task.hpp"
+#include "demo_daemon/tasks/sleep_task.hpp"
 
 namespace demo_daemon::tasks {
 
