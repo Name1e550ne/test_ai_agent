@@ -187,7 +187,7 @@ public:
         return Result(std::move(error));
     }
 
-    [[nodiscard]] bool ok() const noexcept {
+    [[nodiscard]] bool isSuccess() const noexcept {
         return has_value_;
     }
 

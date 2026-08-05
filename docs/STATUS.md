@@ -1,8 +1,8 @@
 # Статус выполнения
 
 **Текущий шаг:** 4  
-**Состояние:** IN_PROGRESS  
-**Последнее обновление:** Начинаю Шаг 4 - Unix Domain Socket server  
+**Состояние:** COMPLETED  
+**Последнее обновление:** Шаг 4 завершен - Unix Domain Socket server реализован  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -15,68 +15,67 @@
 - [x] Шаг 1: Каркас проекта и CMake завершен
 - [x] Шаг 2: Базовые утилиты, ошибки, логирование завершен
 - [x] Шаг 3: JSON protocol abstraction завершен
+- [x] Шаг 4: Unix Domain Socket server завершен
 
 ## Текущая задача
 
-**Шаг 4: Unix Domain Socket server**
+**Шаг 4: Unix Domain Socket server** - ЗАВЕРШЕН
 
-Реализация сервера Unix Domain Socket с использованием epoll для эффективной обработки множественных соединений:
+Реализован сервер Unix Domain Socket с использованием epoll для эффективной обработки множественных соединений:
 
-- UnixSocketServer класс
-- accept loop на базе epoll
-- Session для обработки соединений
-- ConnectionManager для управления сессиями
-- RAII для file descriptors
-- Потокобезопасная отправка сообщений
-- Обработка partial read/write
-- Таймауты на чтение/запись
-
-### Шаг 3 - Созданные файлы:
+### Созданные файлы:
 
 **Заголовочные файлы:**
-- `include/demo_daemon/ipc/json_protocol.hpp` - ProtocolErrorCode enum, ProtocolError struct, RequestMessage, ResponseMessage, ErrorResponseMessage, JsonMessage, JsonProtocolParser class
+- `include/demo_daemon/ipc/session.hpp` - IOBuffer struct, SessionState enum
+- `include/demo_daemon/ipc/session_manager.hpp` - Session класс, SessionManager класс
+- `include/demo_daemon/ipc/connection_manager.hpp` - ConnectionManager класс
+- `include/demo_daemon/ipc/unix_socket_server.hpp` - UnixSocketServer класс, FileDescriptor RAII wrapper
 
 **Исходные файлы:**
-- `src/ipc/json_protocol.cpp` - полная реализация парсера/сериализатора
+- `src/ipc/session.cpp` - реализация Session (minimal)
+- `src/ipc/session_manager.cpp` - реализация SessionManager
+- `src/ipc/connection_manager.cpp` - реализация ConnectionManager
+- `src/ipc/unix_socket_server.cpp` - полная реализация UnixSocketServer с epoll
 
 **Обновленные файлы:**
-- `src/ipc/CMakeLists.txt` - добавлен json_protocol.cpp, линковка с nlohmann_json
-- `docs/KNOWLEDGE_BASE.md` - расширен раздел IPC Protocol с деталями реализации
+- `src/ipc/CMakeLists.txt` - добавлены новые cpp файлы
+- `include/demo_daemon/ipc/session.hpp` - добавлен `#include <cstring>` для std::memmove
+- `include/demo_daemon/core/result.hpp` - переименован метод `ok()` → `isSuccess()` для избежания конфликта имен
 
-### Функциональность Шага 3:
+### Функциональность Шага 4:
 
-- **ProtocolErrorCode**: enum с кодами ошибок JSON-RPC style (-32700..-32004)
-- **ProtocolError**: структура с code, message, optional data
-- **RequestMessage**: id (optional), method, params
-- **ResponseMessage**: id (optional), result
-- **ErrorResponseMessage**: id (optional), error
-- **JsonMessage**: универсальное сообщение (request или response)
-- **JsonProtocolParser**: 
-  - newline-delimited framing
-  - max message size limit (1 MiB по умолчанию)
-  - try_parse() для инкрементального парсинга
-  - serialize() для сериализации
-  - factory методы для ошибок
+- **FileDescriptor**: RAII wrapper для file descriptors (некопируемый, перемещаемый)
+- **Session**: представляет клиентское соединение с буферами чтения/записи
+- **SessionManager**: управляет жизненным циклом сессий, потокобезопасный
+- **ConnectionManager**: менеджер активных соединений
+- **UnixSocketServer**:
+  - Создание Unix Domain Socket с указанным путем
+  - Настройка прав доступа (mode)
+  - epoll-based event loop для мультиплексирования
+  - Accept loop для новых соединений
+  - Обработка событий READ/WRITE/ERROR/HUP
+  - Incremental parsing через JsonProtocolParser
+  - Partial read/write handling
+  - Максимальный размер сообщения 1 MiB
+  - Graceful shutdown
+  - Поддержка множественных клиентов
 
 ### Проверка компиляции:
 
 ```bash
 cd /workspace/build && make -j$(nproc)
 # Результат: [100%] Built target demo_daemon
-# Предупреждения: исправлены (missing field initializers)
+# Предупреждения: 3 предупреждения о неиспользуемых [[nodiscard]] return values
 ```
-
-## Текущая задача
-
-Шаг 3 завершен. JSON protocol abstraction полностью реализована и протестирована компиляцией.
 
 ## Следующий шаг
 
-Шаг 4: Unix Domain Socket server
-- UnixSocketServer класс
-- accept loop на базе epoll
-- Session для обработки соединений
-- ConnectionManager для управления сессиями
+**Шаг 5: Command registry и built-in команды**
+
+- ICommand интерфейс
+- CommandRegistry класс
+- Built-in команды: ping, status, shutdown, commands.list
+- Интеграция с UnixSocketServer
 
 ## Блокеры
 
@@ -90,8 +89,8 @@ cd /workspace/build && make -j$(nproc)
 | STEP 1 | completed | - |
 | STEP 2 | completed | - |
 | STEP 3 | completed | - |
-| STEP 4 | waiting | - |
-| STEP 5 | not started | - |
+| STEP 4 | completed | - |
+| STEP 5 | waiting | - |
 | STEP 6 | not started | - |
 | STEP 7 | not started | - |
 | STEP 8 | not started | - |
@@ -107,5 +106,7 @@ cd /workspace/build && make -j$(nproc)
 - Архитектура утверждена в плане
 - Все технические решения документированы
 - Библиотека demo_daemon_core собирается успешно
-- Библиотека demo_daemon_ipc собрана с json_protocol
+- Библиотека demo_daemon_ipc собрана полностью с Unix socket сервером
 - nlohmann/json подключен через FetchContent (системный пакет не найден)
+- Исправлена ошибка компиляции: missing `<cstring>` include
+- Исправлен конфликт имен: `Result<void>::ok()` переименован в `isSuccess()`
