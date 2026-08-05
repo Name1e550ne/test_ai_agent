@@ -5,7 +5,7 @@ add_library(demo_daemon_ipc STATIC)
 target_sources(demo_daemon_ipc PRIVATE
     json_protocol.cpp
     unix_socket_server.cpp
-    session.cpp
+    session_manager.cpp
     connection_manager.cpp
 )
 

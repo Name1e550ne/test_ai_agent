@@ -1,8 +1,8 @@
 # Статус выполнения
 
-**Текущий шаг:** 3  
-**Состояние:** COMPLETED  
-**Последнее обновление:** Шаг 3 завершен - JSON Protocol Abstraction реализована  
+**Текущий шаг:** 4  
+**Состояние:** IN_PROGRESS  
+**Последнее обновление:** Начинаю Шаг 4 - Unix Domain Socket server  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -15,6 +15,21 @@
 - [x] Шаг 1: Каркас проекта и CMake завершен
 - [x] Шаг 2: Базовые утилиты, ошибки, логирование завершен
 - [x] Шаг 3: JSON protocol abstraction завершен
+
+## Текущая задача
+
+**Шаг 4: Unix Domain Socket server**
+
+Реализация сервера Unix Domain Socket с использованием epoll для эффективной обработки множественных соединений:
+
+- UnixSocketServer класс
+- accept loop на базе epoll
+- Session для обработки соединений
+- ConnectionManager для управления сессиями
+- RAII для file descriptors
+- Потокобезопасная отправка сообщений
+- Обработка partial read/write
+- Таймауты на чтение/запись
 
 ### Шаг 3 - Созданные файлы:
 
