@@ -4,8 +4,10 @@ add_library(demo_daemon_tasks STATIC)
 
 target_sources(demo_daemon_tasks PRIVATE
     task_manager.cpp
+    task_registry.cpp
     builtin/heartbeat_task.cpp
     builtin/sleep_task.cpp
+    builtin/task_factory.cpp
 )
 
 target_include_directories(demo_daemon_tasks PUBLIC
