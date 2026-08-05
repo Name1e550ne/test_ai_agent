@@ -1,15 +1,20 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include <nlohmann/json.hpp>
+
+namespace demo_daemon::tasks {
+    class TaskManager;
+}
 
 namespace demo_daemon::core {
 
 using Json = nlohmann::json;
 
 struct CommandContext {
-    // В будущем можно добавить информацию о клиенте, права доступа и т.д.
     std::string client_id;
+    std::shared_ptr<tasks::TaskManager> task_manager;
 };
 
 struct CommandResult {
