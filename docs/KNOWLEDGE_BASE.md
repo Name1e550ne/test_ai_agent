@@ -127,22 +127,47 @@ Response: {"id": <same as request>, "result": <any>}
 Error:    {"id": <same as request>, "error": {"code": <number>, "message": "<string>"}}
 ```
 
-Разделитель: `\n` (newline)
+Разделитель: `\n` (newline-delimited JSON)
 
-### Коды ошибок
+### Коды ошибок протокола
 
 | Code | Название | Описание |
 |------|----------|----------|
-| -32700 | Parse error | Некорректный JSON |
-| -32600 | Invalid Request | Отсутствуют обязательные поля |
-| -32601 | Method not found | Неизвестная команда |
-| -32602 | Invalid Params | Неправильные параметры |
+| -32700 | Parse error | Некорректный JSON (синтаксическая ошибка) |
+| -32600 | Invalid Request | Отсутствуют обязательные поля, невалидная структура |
+| -32601 | Method not found | Неизвестная команда/метод |
+| -32602 | Invalid Params | Неправильные параметры команды |
 | -32603 | Internal error | Внутренняя ошибка сервера |
 | -32000 | Server busy | Сервер перегружен |
-| -32001 | Task not found | Задача не найдена |
-| -32002 | Task already exists | Задача уже существует |
+| -32001 | Timeout | Таймаут операции |
+| -32002 | NotFound | Ресурс не найден |
+| -32003 | Unauthorized | Требуется авторизация |
+| -32004 | Forbidden | Доступ запрещен |
 
-### Примеры
+### Максимальный размер сообщения
+
+По умолчанию: **1 MiB** (1048576 байт).
+
+При превышении лимита сообщение отбрасывается, возвращается ошибка ParseError.
+
+### Поведение при ошибках
+
+| Ситуация | Реакция |
+|----------|---------|
+| Некорректный JSON | Вернуть `{"id": null, "error": {"code": -32700, ...}}`, соединение НЕ закрывать |
+| Unknown method | Вернуть ошибку MethodNotFound с id из запроса |
+| Missing id в request | Обработать как notification (без ответа) или вернуть InvalidRequest |
+| Разрыв соединения клиентом | Корректно закрыть fd, удалить сессию |
+| Partial read | Накопить данные в буфере, ждать продолжения |
+| Partial write | Продолжить запись, использовать non-blocking I/O |
+
+### Таймауты
+
+- Чтение: настраиваемый таймаут через SO_RCVTIMEO
+- Запись: настраиваемый таймаут через SO_SNDTIMEO
+- Рекомендуется: 30 секунд по умолчанию
+
+### Примеры сообщений
 
 ```json
 // Ping запрос
@@ -152,8 +177,21 @@ Error:    {"id": <same as request>, "error": {"code": <number>, "message": "<str
 {"id":1,"result":{"status":"ok","timestamp":"2025-01-15T10:30:00Z"}}
 
 // Ошибка метода
-{"id":2,"error":{"code":-32601,"message":"Method not found"}}
+{"id":2,"error":{"code":-32601,"message":"Method not found: unknown_method"}}
+
+// Notification (без ответа)
+{"method":"tasks.add","params":{"type":"heartbeat","interval":5}}
+
+// Ошибка парсинга
+{"id":null,"error":{"code":-32700,"message":"Invalid JSON payload"}}
 ```
+
+### Реализация в коде
+
+- `include/demo_daemon/ipc/json_protocol.hpp` — интерфейс и типы
+- `src/ipc/json_protocol.cpp` — реализация парсера/сериализатора
+- `JsonProtocolParser::try_parse()` — инкрементальный парсинг с framing
+- `JsonProtocolParser::serialize()` — сериализация в строку с '\n'
 
 ## 4. Команды
 
