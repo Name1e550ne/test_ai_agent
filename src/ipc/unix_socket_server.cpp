@@ -326,7 +326,7 @@ void UnixSocketServer::handle_epoll_event(const struct epoll_event& event,
     auto session = connection_manager_.get_session_by_fd(client_fd);
     if (!session) {
         // Сессия уже удалена, убираем из epoll
-        remove_from_epoll(client_fd);
+        [[maybe_unused]] bool removed = remove_from_epoll(client_fd);
         return;
     }
     
@@ -343,7 +343,7 @@ void UnixSocketServer::handle_epoll_event(const struct epoll_event& event,
     if (!session_active || session->is_closed()) {
         logger_->debug("UnixSocketServer", 
                        "Closing session (fd={})", client_fd);
-        remove_from_epoll(client_fd);
+        [[maybe_unused]] bool removed = remove_from_epoll(client_fd);
         connection_manager_.remove_session_by_fd(client_fd);
         // FD будет закрыт в деструкторе сессии
     }
@@ -366,7 +366,7 @@ void UnixSocketServer::on_message(const RequestMessage& msg,
         ev.data.ptr = reinterpret_cast<void*>(
             static_cast<uintptr_t>(session->get_fd())
         );
-        modify_epoll(session->get_fd(), ev.events, ev.data.ptr);
+        [[maybe_unused]] bool modified = modify_epoll(session->get_fd(), ev.events, ev.data.ptr);
         
     } catch (const std::exception& e) {
         logger_->error("UnixSocketServer", 
