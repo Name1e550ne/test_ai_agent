@@ -1,8 +1,8 @@
 # Статус выполнения
 
-**Текущий шаг:** 5  
+**Текущий шаг:** 8  
 **Состояние:** COMPLETED  
-**Последнее обновление:** Шаг 5 завершен - Command registry и built-in команды реализованы  
+**Последнее обновление:** Шаг 8 завершен - CLI-клиент реализован и успешно компилируется  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -17,64 +17,77 @@
 - [x] Шаг 3: JSON protocol abstraction завершен
 - [x] Шаг 4: Unix Domain Socket server завершен
 - [x] Шаг 5: Command registry и built-in команды завершен
+- [x] Шаг 6: Task manager и интерфейс фоновых задач завершен
+- [x] Шаг 7: Пример фоновой задачи завершен
+- [x] Шаг 8: CLI-клиент завершен
 
 ## Текущая задача
 
-**Шаг 5: Command registry и built-in команды** - ЗАВЕРШЕН
+**Шаг 8: CLI-клиент** - ЗАВЕРШЕН
 
-Реализована система команд с интерфейсом ICommand, реестром команд и встроенными командами:
+Реализован полноценный CLI-клиент для взаимодействия с демоном через Unix Domain Socket.
 
 ### Созданные файлы:
 
 **Заголовочные файлы:**
-- `include/demo_daemon/core/command.hpp` - ICommand интерфейс, CommandContext, CommandResult
-- `include/demo_daemon/core/command_registry.hpp` - CommandRegistry класс
-- `include/demo_daemon/commands/ping_command.hpp` - PingCommand
-- `include/demo_daemon/commands/shutdown_command.hpp` - ShutdownCommand
-- `include/demo_daemon/commands/commands_list_command.hpp` - CommandsListCommand
+- `include/demo_daemon/cli/client.hpp` - DemoDaemonClient класс, CommandResponse структура
 
 **Исходные файлы:**
-- `src/core/command_registry.cpp` - реализация CommandRegistry
-- `src/commands/ping_command.cpp` - реализация PingCommand
-- `src/commands/shutdown_command.cpp` - реализация ShutdownCommand
-- `src/commands/commands_list_command.cpp` - реализация CommandsListCommand
+- `src/cli/client.cpp` - реализация клиента (подключение, отправка запросов, получение ответов)
+- `src/cli/main.cpp` - точка входа CLI с парсингом аргументов и командами
 
 **Обновленные файлы:**
-- `src/core/CMakeLists.txt` - добавлен command_registry.cpp
-- `src/commands/CMakeLists.txt` - обновлен список файлов команд
+- `src/cli/CMakeLists.txt` - добавлен client.cpp
 
-### Функциональность Шага 5:
+### Функциональность Шага 8:
 
-- **ICommand**: интерфейс для всех команд с методами name(), description(), execute()
-- **CommandContext**: контекст выполнения команды (клиент, права доступа)
-- **CommandResult**: результат выполнения команды с полями success, error_code, message, data
-- **CommandRegistry**: потокобезопасный реестр команд с регистрацией, поиском и списком команд
-- **Built-in команды**:
-  - `ping` - проверка связи, возвращает "pong" с timestamp
-  - `shutdown` - запрос на остановку демона
-  - `commands.list` - список доступных команд (заглушка)
+- **DemoDaemonClient**: класс клиента с pimpl идиомой
+  - Подключение к Unix Domain Socket
+  - Отправка JSON-запросов с newline-delimited framing
+  - Получение и парсинг JSON-ответов
+  - Таймауты на чтение/запись
+  - Обработка ошибок подключения и связи
+
+- **CLI команды**:
+  - `ping` - проверка связи
+  - `status` - статус демона
+  - `shutdown` - запрос остановки
+  - `commands list` - список команд
+  - `tasks list` - список задач
+  - `tasks add TYPE` - добавление задачи
+  - `tasks stop ID` - остановка задачи
+  - `call METHOD PARAMS` - произвольный вызов
+
+- **Аргументы командной строки**:
+  - `--socket-path` - путь к сокету (default: /run/demo_daemon/demo_daemon.sock)
+  - `--timeout` - таймаут в мс (default: 5000)
+  - `--raw-json` - вывод raw JSON
+  - `--help` - справка
+
+- **Поддержка переменных окружения**: DEMO_DAEMON_SOCKET, XDG_RUNTIME_DIR
 
 ### Проверка компиляции:
 
 ```bash
-cd /workspace/build && make -j2
-# Результат: [100%] Built target demo_daemon
+cd /workspace/build && make -j4
+# Результат: [100%] Built target demo_daemon_cli
 ```
 
-### Предупреждения:
+### Тест CLI:
 
-- 3 предупреждения о неиспользуемых [[nodiscard]] return values в unix_socket_server.cpp
-- Требуется исправление в следующем шаге
+```bash
+/workspace/build/src/cli/demo_daemon_cli --help
+# Успешно выводит справку
+```
 
 ## Следующий шаг
 
-**Шаг 6: Task manager и интерфейс фоновых задач**
+**Шаг 9: Обработка сигналов и graceful shutdown**
 
-- ITask/IBackgroundTask интерфейс
-- TaskManager класс
-- Состояния задач: Pending, Running, Stopping, Stopped, Failed
-- Worker threads для запуска задач
-- Cooperative cancellation через std::stop_token
+- SignalHandler с использованием signalfd
+- Поддержка SIGTERM, SIGINT, SIGHUP, SIGPIPE
+- Graceful shutdown логика
+- Интеграция с главным циклом демона
 
 ## Блокеры
 
@@ -90,21 +103,11 @@ cd /workspace/build && make -j2
 | STEP 3 | completed | - |
 | STEP 4 | completed | - |
 | STEP 5 | completed | - |
-| STEP 6 | waiting | - |
-| STEP 7 | not started | - |
-| STEP 8 | not started | - |
-| STEP 9 | not started | - |
+| STEP 6 | completed | Фактически реализован ранее |
+| STEP 7 | completed | Фактически реализован ранее |
+| STEP 8 | completed | Только что завершен |
+| STEP 9 | waiting | - |
 | STEP 10 | not started | - |
 | STEP 11 | not started | - |
 | STEP 12 | not started | - |
 | STEP 13 | not started | - |
-
-## Заметки
-
-- Plan содержит 13 шагов реализации
-- Архитектура утверждена в плане
-- Все технические решения документированы
-- Система команд полностью функциональна
-- Команды потокобезопасны благодаря mutex в CommandRegistry
-- Используется std::shared_ptr для управления временем жизни команд
-- CommandResult использует статические методы ok() и err() для создания результатов
