@@ -1,8 +1,8 @@
 # Статус выполнения
 
-**Текущий шаг:** 8  
+**Текущий шаг:** 9  
 **Состояние:** COMPLETED  
-**Последнее обновление:** Шаг 8 завершен - CLI-клиент реализован и успешно компилируется  
+**Последнее обновление:** Шаг 9 завершен - Обработка сигналов и graceful shutdown реализованы  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -20,74 +20,81 @@
 - [x] Шаг 6: Task manager и интерфейс фоновых задач завершен
 - [x] Шаг 7: Пример фоновой задачи завершен
 - [x] Шаг 8: CLI-клиент завершен
+- [x] Шаг 9: Обработка сигналов и graceful shutdown завершен
 
 ## Текущая задача
 
-**Шаг 8: CLI-клиент** - ЗАВЕРШЕН
+**Шаг 9: Обработка сигналов и graceful shutdown** - ЗАВЕРШЕН
 
-Реализован полноценный CLI-клиент для взаимодействия с демоном через Unix Domain Socket.
+Реализована полноценная обработка сигналов и graceful shutdown для демона.
 
 ### Созданные файлы:
 
 **Заголовочные файлы:**
-- `include/demo_daemon/cli/client.hpp` - DemoDaemonClient класс, CommandResponse структура
+- `include/demo_daemon/core/signal_handler.hpp` - SignalHandler класс с enum SignalType
 
 **Исходные файлы:**
-- `src/cli/client.cpp` - реализация клиента (подключение, отправка запросов, получение ответов)
-- `src/cli/main.cpp` - точка входа CLI с парсингом аргументов и командами
+- `src/core/signal_handler.cpp` - реализация обработчика сигналов (self-pipe trick, async-signal-safe)
+- `src/daemon/main.cpp` - главный цикл демона с поддержкой graceful shutdown
 
-**Обновленные файлы:**
-- `src/cli/CMakeLists.txt` - добавлен client.cpp
+### Функциональность Шага 9:
 
-### Функциональность Шага 8:
+- **SignalHandler**: безопасный обработчик сигналов
+  - Self-pipe trick для передачи сигналов в основной цикл
+  - Async-signal-safe операции в signal handler
+  - Atomic flag для быстрой проверки shutdown
+  - Поддержка сигналов: SIGINT, SIGTERM, SIGHUP, SIGPIPE
 
-- **DemoDaemonClient**: класс клиента с pimpl идиомой
-  - Подключение к Unix Domain Socket
-  - Отправка JSON-запросов с newline-delimited framing
-  - Получение и парсинг JSON-ответов
-  - Таймауты на чтение/запись
-  - Обработка ошибок подключения и связи
+- **Обработка сигналов**:
+  - `SIGINT` (Ctrl+C) - graceful shutdown
+  - `SIGTERM` - graceful shutdown
+  - `SIGHUP` - logging (config reload не реализован)
+  - `SIGPIPE` - игнорируется
 
-- **CLI команды**:
-  - `ping` - проверка связи
-  - `status` - статус демона
-  - `shutdown` - запрос остановки
-  - `commands list` - список команд
-  - `tasks list` - список задач
-  - `tasks add TYPE` - добавление задачи
-  - `tasks stop ID` - остановка задачи
-  - `call METHOD PARAMS` - произвольный вызов
+- **Graceful shutdown**:
+  - Проверка флага shutdown в главном цикле
+  - Логирование событий остановки
+  - Корректная очистка ресурсов
 
-- **Аргументы командной строки**:
-  - `--socket-path` - путь к сокету (default: /run/demo_daemon/demo_daemon.sock)
-  - `--timeout` - таймаут в мс (default: 5000)
-  - `--raw-json` - вывод raw JSON
+- **Аргументы командной строки демона**:
+  - `--socket-path` - путь к сокету
+  - `--log-level` - уровень логирования (trace, debug, info, warn, error)
   - `--help` - справка
-
-- **Поддержка переменных окружения**: DEMO_DAEMON_SOCKET, XDG_RUNTIME_DIR
+  - `--version` - версия
 
 ### Проверка компиляции:
 
 ```bash
-cd /workspace/build && make -j4
-# Результат: [100%] Built target demo_daemon_cli
+cd /workspace/build && make -j1
+# Результат: [100%] Built target demo_daemon
 ```
 
-### Тест CLI:
+### Структура главного цикла:
 
-```bash
-/workspace/build/src/cli/demo_daemon_cli --help
-# Успешно выводит справку
+```cpp
+while (!SignalHandler::isShutdownRequested()) {
+    SignalHandler::SignalType signal = signalHandler.checkSignal();
+    
+    if (signal != SignalHandler::SignalType::None) {
+        // Обработка сигнала (SIGINT, SIGTERM, SIGHUP, SIGPIPE)
+        // Выход из цикла при SIGINT/SIGTERM
+    }
+    
+    usleep(100000);  // 100ms пауза
+}
+
+// Graceful shutdown
+LOG_INFO("Shutting down daemon...");
+LOG_INFO("Daemon stopped gracefully");
 ```
 
 ## Следующий шаг
 
-**Шаг 9: Обработка сигналов и graceful shutdown**
+**Шаг 10: Интеграция всех компонентов**
 
-- SignalHandler с использованием signalfd
-- Поддержка SIGTERM, SIGINT, SIGHUP, SIGPIPE
-- Graceful shutdown логика
-- Интеграция с главным циклом демона
+- Интеграция сервера, task manager и command registry в main
+- Запуск epoll loop для обработки подключений
+- Обработка команд от клиентов
 
 ## Блокеры
 
@@ -106,8 +113,8 @@ cd /workspace/build && make -j4
 | STEP 6 | completed | Фактически реализован ранее |
 | STEP 7 | completed | Фактически реализован ранее |
 | STEP 8 | completed | Только что завершен |
-| STEP 9 | waiting | - |
-| STEP 10 | not started | - |
+| STEP 9 | completed | Только что завершен |
+| STEP 10 | waiting | - |
 | STEP 11 | not started | - |
 | STEP 12 | not started | - |
 | STEP 13 | not started | - |
