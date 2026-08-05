@@ -1,8 +1,8 @@
 # Статус выполнения
 
-**Текущий шаг:** 9  
+**Текущий шаг:** 10  
 **Состояние:** COMPLETED  
-**Последнее обновление:** Шаг 9 завершен - Обработка сигналов и graceful shutdown реализованы  
+**Последнее обновление:** Шаг 10 завершен - Интеграция всех компонентов выполнена  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -21,46 +21,64 @@
 - [x] Шаг 7: Пример фоновой задачи завершен
 - [x] Шаг 8: CLI-клиент завершен
 - [x] Шаг 9: Обработка сигналов и graceful shutdown завершен
+- [x] Шаг 10: Интеграция всех компонентов завершен
 
 ## Текущая задача
 
-**Шаг 9: Обработка сигналов и graceful shutdown** - ЗАВЕРШЕН
+**Шаг 10: Интеграция всех компонентов** - ЗАВЕРШЕН
 
-Реализована полноценная обработка сигналов и graceful shutdown для демона.
+Выполнена полная интеграция всех компонентов демона в единое рабочее приложение.
 
-### Созданные файлы:
+### Изменения в Шаге 10:
 
-**Заголовочные файлы:**
-- `include/demo_daemon/core/signal_handler.hpp` - SignalHandler класс с enum SignalType
+**Обновленные файлы:**
+- `src/daemon/main.cpp` - полная переработка главного цикла с интеграцией всех компонентов
+- `include/demo_daemon/command/command.hpp` - обновлен CommandContext для передачи TaskManager
 
-**Исходные файлы:**
-- `src/core/signal_handler.cpp` - реализация обработчика сигналов (self-pipe trick, async-signal-safe)
-- `src/daemon/main.cpp` - главный цикл демона с поддержкой graceful shutdown
+### Функциональность Шага 10:
 
-### Функциональность Шага 9:
+- **CommandRegistry**: реестр команд с поддержкой динамической регистрации
+  - Встроенные команды: ping, echo, status, tasks.list, tasks.add, tasks.stop
+  - Метод execute() для обработки команд от клиентов
+  
+- **TaskManager**: менеджер фоновых задач
+  - Создание и отслеживание задач
+  - Остановка задач по ID
+  - Интеграция с командами tasks.*
 
-- **SignalHandler**: безопасный обработчик сигналов
-  - Self-pipe trick для передачи сигналов в основной цикл
-  - Async-signal-safe операции в signal handler
-  - Atomic flag для быстрой проверки shutdown
-  - Поддержка сигналов: SIGINT, SIGTERM, SIGHUP, SIGPIPE
+- **Unix Domain Socket сервер**: обработка подключений клиентов
+  - Epoll-based event loop
+  - Асинхронная обработка запросов
+  - JSON протокол для обмена данными
 
-- **Обработка сигналов**:
-  - `SIGINT` (Ctrl+C) - graceful shutdown
-  - `SIGTERM` - graceful shutdown
-  - `SIGHUP` - logging (config reload не реализован)
-  - `SIGPIPE` - игнорируется
+- **Graceful shutdown**: корректная остановка демона
+  - Обработка сигналов SIGINT, SIGTERM
+  - Очистка ресурсов при завершении
 
-- **Graceful shutdown**:
-  - Проверка флага shutdown в главном цикле
-  - Логирование событий остановки
-  - Корректная очистка ресурсов
+### Структура главного цикла:
 
-- **Аргументы командной строки демона**:
-  - `--socket-path` - путь к сокету
-  - `--log-level` - уровень логирования (trace, debug, info, warn, error)
-  - `--help` - справка
-  - `--version` - версия
+```cpp
+// Инициализация компонентов
+CommandRegistry registry;
+TaskManager taskManager;
+SocketServer server(socketPath);
+
+// Регистрация команд
+registry.registerCommand("ping", ...);
+registry.registerCommand("status", ...);
+registry.registerCommand("tasks.list", ...);
+registry.registerCommand("tasks.add", ...);
+registry.registerCommand("tasks.stop", ...);
+
+// Главный цикл с epoll
+while (!SignalHandler::isShutdownRequested()) {
+    // epoll_wait для событий
+    // Обработка подключений
+    // Чтение запросов
+    // Выполнение команд через registry.execute()
+    // Отправка ответов
+}
+```
 
 ### Проверка компиляции:
 
@@ -69,32 +87,13 @@ cd /workspace/build && make -j1
 # Результат: [100%] Built target demo_daemon
 ```
 
-### Структура главного цикла:
-
-```cpp
-while (!SignalHandler::isShutdownRequested()) {
-    SignalHandler::SignalType signal = signalHandler.checkSignal();
-    
-    if (signal != SignalHandler::SignalType::None) {
-        // Обработка сигнала (SIGINT, SIGTERM, SIGHUP, SIGPIPE)
-        // Выход из цикла при SIGINT/SIGTERM
-    }
-    
-    usleep(100000);  // 100ms пауза
-}
-
-// Graceful shutdown
-LOG_INFO("Shutting down daemon...");
-LOG_INFO("Daemon stopped gracefully");
-```
-
 ## Следующий шаг
 
-**Шаг 10: Интеграция всех компонентов**
+**Шаг 11: Тестирование и отладка**
 
-- Интеграция сервера, task manager и command registry в main
-- Запуск epoll loop для обработки подключений
-- Обработка команд от клиентов
+- Написание unit-тестов для ключевых компонентов
+- Интеграционное тестирование демона
+- Проверка обработки ошибок и edge cases
 
 ## Блокеры
 
@@ -114,7 +113,7 @@ LOG_INFO("Daemon stopped gracefully");
 | STEP 7 | completed | Фактически реализован ранее |
 | STEP 8 | completed | Только что завершен |
 | STEP 9 | completed | Только что завершен |
-| STEP 10 | waiting | - |
-| STEP 11 | not started | - |
+| STEP 10 | completed | Только что завершен |
+| STEP 11 | waiting | - |
 | STEP 12 | not started | - |
 | STEP 13 | not started | - |
