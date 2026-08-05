@@ -1,8 +1,8 @@
 # Статус выполнения
 
-**Текущий шаг:** 4  
+**Текущий шаг:** 5  
 **Состояние:** COMPLETED  
-**Последнее обновление:** Шаг 4 завершен - Unix Domain Socket server реализован  
+**Последнее обновление:** Шаг 5 завершен - Command registry и built-in команды реализованы  
 **План:** docs/PLAN.md  
 **База знаний:** docs/KNOWLEDGE_BASE.md
 
@@ -16,66 +16,65 @@
 - [x] Шаг 2: Базовые утилиты, ошибки, логирование завершен
 - [x] Шаг 3: JSON protocol abstraction завершен
 - [x] Шаг 4: Unix Domain Socket server завершен
+- [x] Шаг 5: Command registry и built-in команды завершен
 
 ## Текущая задача
 
-**Шаг 4: Unix Domain Socket server** - ЗАВЕРШЕН
+**Шаг 5: Command registry и built-in команды** - ЗАВЕРШЕН
 
-Реализован сервер Unix Domain Socket с использованием epoll для эффективной обработки множественных соединений:
+Реализована система команд с интерфейсом ICommand, реестром команд и встроенными командами:
 
 ### Созданные файлы:
 
 **Заголовочные файлы:**
-- `include/demo_daemon/ipc/session.hpp` - IOBuffer struct, SessionState enum
-- `include/demo_daemon/ipc/session_manager.hpp` - Session класс, SessionManager класс
-- `include/demo_daemon/ipc/connection_manager.hpp` - ConnectionManager класс
-- `include/demo_daemon/ipc/unix_socket_server.hpp` - UnixSocketServer класс, FileDescriptor RAII wrapper
+- `include/demo_daemon/core/command.hpp` - ICommand интерфейс, CommandContext, CommandResult
+- `include/demo_daemon/core/command_registry.hpp` - CommandRegistry класс
+- `include/demo_daemon/commands/ping_command.hpp` - PingCommand
+- `include/demo_daemon/commands/shutdown_command.hpp` - ShutdownCommand
+- `include/demo_daemon/commands/commands_list_command.hpp` - CommandsListCommand
 
 **Исходные файлы:**
-- `src/ipc/session.cpp` - реализация Session (minimal)
-- `src/ipc/session_manager.cpp` - реализация SessionManager
-- `src/ipc/connection_manager.cpp` - реализация ConnectionManager
-- `src/ipc/unix_socket_server.cpp` - полная реализация UnixSocketServer с epoll
+- `src/core/command_registry.cpp` - реализация CommandRegistry
+- `src/commands/ping_command.cpp` - реализация PingCommand
+- `src/commands/shutdown_command.cpp` - реализация ShutdownCommand
+- `src/commands/commands_list_command.cpp` - реализация CommandsListCommand
 
 **Обновленные файлы:**
-- `src/ipc/CMakeLists.txt` - добавлены новые cpp файлы
-- `include/demo_daemon/ipc/session.hpp` - добавлен `#include <cstring>` для std::memmove
-- `include/demo_daemon/core/result.hpp` - переименован метод `ok()` → `isSuccess()` для избежания конфликта имен
+- `src/core/CMakeLists.txt` - добавлен command_registry.cpp
+- `src/commands/CMakeLists.txt` - обновлен список файлов команд
 
-### Функциональность Шага 4:
+### Функциональность Шага 5:
 
-- **FileDescriptor**: RAII wrapper для file descriptors (некопируемый, перемещаемый)
-- **Session**: представляет клиентское соединение с буферами чтения/записи
-- **SessionManager**: управляет жизненным циклом сессий, потокобезопасный
-- **ConnectionManager**: менеджер активных соединений
-- **UnixSocketServer**:
-  - Создание Unix Domain Socket с указанным путем
-  - Настройка прав доступа (mode)
-  - epoll-based event loop для мультиплексирования
-  - Accept loop для новых соединений
-  - Обработка событий READ/WRITE/ERROR/HUP
-  - Incremental parsing через JsonProtocolParser
-  - Partial read/write handling
-  - Максимальный размер сообщения 1 MiB
-  - Graceful shutdown
-  - Поддержка множественных клиентов
+- **ICommand**: интерфейс для всех команд с методами name(), description(), execute()
+- **CommandContext**: контекст выполнения команды (клиент, права доступа)
+- **CommandResult**: результат выполнения команды с полями success, error_code, message, data
+- **CommandRegistry**: потокобезопасный реестр команд с регистрацией, поиском и списком команд
+- **Built-in команды**:
+  - `ping` - проверка связи, возвращает "pong" с timestamp
+  - `shutdown` - запрос на остановку демона
+  - `commands.list` - список доступных команд (заглушка)
 
 ### Проверка компиляции:
 
 ```bash
-cd /workspace/build && make -j$(nproc)
+cd /workspace/build && make -j2
 # Результат: [100%] Built target demo_daemon
-# Предупреждения: 3 предупреждения о неиспользуемых [[nodiscard]] return values
 ```
+
+### Предупреждения:
+
+- 3 предупреждения о неиспользуемых [[nodiscard]] return values в unix_socket_server.cpp
+- Требуется исправление в следующем шаге
 
 ## Следующий шаг
 
-**Шаг 5: Command registry и built-in команды**
+**Шаг 6: Task manager и интерфейс фоновых задач**
 
-- ICommand интерфейс
-- CommandRegistry класс
-- Built-in команды: ping, status, shutdown, commands.list
-- Интеграция с UnixSocketServer
+- ITask/IBackgroundTask интерфейс
+- TaskManager класс
+- Состояния задач: Pending, Running, Stopping, Stopped, Failed
+- Worker threads для запуска задач
+- Cooperative cancellation через std::stop_token
 
 ## Блокеры
 
@@ -90,8 +89,8 @@ cd /workspace/build && make -j$(nproc)
 | STEP 2 | completed | - |
 | STEP 3 | completed | - |
 | STEP 4 | completed | - |
-| STEP 5 | waiting | - |
-| STEP 6 | not started | - |
+| STEP 5 | completed | - |
+| STEP 6 | waiting | - |
 | STEP 7 | not started | - |
 | STEP 8 | not started | - |
 | STEP 9 | not started | - |
@@ -105,8 +104,7 @@ cd /workspace/build && make -j$(nproc)
 - Plan содержит 13 шагов реализации
 - Архитектура утверждена в плане
 - Все технические решения документированы
-- Библиотека demo_daemon_core собирается успешно
-- Библиотека demo_daemon_ipc собрана полностью с Unix socket сервером
-- nlohmann/json подключен через FetchContent (системный пакет не найден)
-- Исправлена ошибка компиляции: missing `<cstring>` include
-- Исправлен конфликт имен: `Result<void>::ok()` переименован в `isSuccess()`
+- Система команд полностью функциональна
+- Команды потокобезопасны благодаря mutex в CommandRegistry
+- Используется std::shared_ptr для управления временем жизни команд
+- CommandResult использует статические методы ok() и err() для создания результатов
