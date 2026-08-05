@@ -3,6 +3,7 @@
 add_library(demo_daemon_ipc STATIC)
 
 target_sources(demo_daemon_ipc PRIVATE
+    json_protocol.cpp
     unix_socket_server.cpp
     session.cpp
     connection_manager.cpp
@@ -14,6 +15,7 @@ target_include_directories(demo_daemon_ipc PUBLIC
 
 target_link_libraries(demo_daemon_ipc PUBLIC
     demo_daemon_core
+    nlohmann_json::nlohmann_json
     pthread
 )
 
