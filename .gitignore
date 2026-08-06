@@ -1,40 +1,56 @@
-```
-# Build artifacts
 *.o
 *.obj
-*.a
-*.so
-*.dylib
-*.dll
-*.exe
 *.out
-
-# CMake build directories
-# Игнорировать любую папку build на любом уровне вложенности
-build/
-**/build/
-
-# Игнорировать папки сборки CMake
-cmake-build-*/
-CMakeFiles/
-CMakeCache.txt
-Makefile
-compile_commands.json
-
-# Dependencies
-.externalNativeBuild/
-.gradle/
-
-# Logs and temp files
-*.log
-*.tmp
+*.exe
+*.dll
+*.so
+*.a
+*.class
+*.pyc
 *.swp
-
-# Editors
+*.swo
+*.tmp
+*.log
+*.env
+*.env.local
+.env*
+node_modules/
+__pycache__/
+.pycache/
+dist/
+build/
+target/
+.coverage
+coverage/
+htmlcov/
 .vscode/
 .idea/
-*.swo
-
-# OS generated files
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+.gradle/
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 .DS_Store
 Thumbs.db
