@@ -10,7 +10,11 @@
 *.out
 
 # CMake build directories
+# Игнорировать любую папку build на любом уровне вложенности
 build/
+**/build/
+
+# Игнорировать папки сборки CMake
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
