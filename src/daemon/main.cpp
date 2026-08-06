@@ -5,6 +5,8 @@
 #include "demo_daemon/ipc/unix_socket_server.hpp"
 #include "demo_daemon/tasks/task_manager.hpp"
 #include "demo_daemon/tasks/task_registry.hpp"
+#include "demo_daemon/tasks/heartbeat_task.hpp"
+#include "demo_daemon/tasks/sleep_task.hpp"
 #include "demo_daemon/commands/ping_command.hpp"
 #include "demo_daemon/commands/status_command.hpp"
 #include "demo_daemon/commands/shutdown_command.hpp"
@@ -24,6 +26,7 @@ using namespace demo_daemon;
 using namespace demo_daemon::ipc;
 using namespace demo_daemon::tasks;
 using namespace demo_daemon::core;
+using namespace demo_daemon::commands;
 
 namespace {
 
@@ -97,12 +100,29 @@ int main(int argc, char* argv[]) {
     // Регистрируем встроенные команды
     commandRegistry->register_command(std::make_shared<PingCommand>());
     commandRegistry->register_command(std::make_shared<StatusCommand>());
-    commandRegistry->register_command(std::make_shared<ShutdownCommand>(signalHandler));
-    commandRegistry->register_command(std::make_shared<CommandsListCommand>(*commandRegistry));
+    commandRegistry->register_command(std::make_shared<ShutdownCommand>());
+    commandRegistry->register_command(std::make_shared<CommandsListCommand>());
     
     // Создаем реестр задач и менеджер задач
     auto taskRegistry = std::make_shared<TaskRegistry>();
-    tasks::TaskRegistry::register_builtin_tasks(taskRegistry);
+    
+    // Регистрируем встроенные задачи через фабрику TaskRegistry
+    taskRegistry->register_task_type("heartbeat", [](const std::string& id, const nlohmann::json& params) {
+        int interval_sec = 5;
+        if (params.contains("interval")) {
+            interval_sec = params["interval"].get<int>();
+        }
+        auto task = std::make_unique<HeartbeatTask>(std::chrono::seconds(interval_sec));
+        return task;
+    });
+    taskRegistry->register_task_type("sleep", [](const std::string& id, const nlohmann::json& params) {
+        int duration_sec = 10;
+        if (params.contains("duration")) {
+            duration_sec = params["duration"].get<int>();
+        }
+        return std::make_unique<SleepTask>(std::chrono::seconds(duration_sec));
+    });
+    
     auto taskManager = std::make_shared<TaskManager>(taskRegistry);
     
     // Добавляем команды для управления задачами
